@@ -2,16 +2,20 @@
 import React, { useState } from 'react';
 import { IonContent, IonHeader, IonPage, IonTitle, IonToolbar, IonInput, IonItem, IonLabel, IonButton, IonAlert } from '@ionic/react';
 import { createUserWithEmailAndPassword } from 'firebase/auth';
-import { doc, getDoc, setDoc } from 'firebase/firestore';
+import { doc, setDoc } from 'firebase/firestore';
 import { useHistory } from 'react-router-dom';
 import { auth, db } from './firebase';
+import './signup.css'; // Import the CSS file
+import welcomeImage from "./images/icon.jpg"; // Import the image
 
 const SignUp: React.FC = () => {
+  const [name, setName] = useState<string>('');
   const [email, setEmail] = useState<string>('');
   const [password, setPassword] = useState<string>('');
   const [error, setError] = useState<string | null>(null);
   const [showAlert, setShowAlert] = useState<boolean>(false);
   const [alertMessage, setAlertMessage] = useState<string>('');
+
   const history = useHistory();
 
   const handleSignUp = async () => {
@@ -19,22 +23,16 @@ const SignUp: React.FC = () => {
       const userCredential = await createUserWithEmailAndPassword(auth, email, password);
       const user = userCredential.user;
 
-      // Check if user already exists in Firestore
+      // Store user data in Firestore
       const userDocRef = doc(db, 'users', user.uid);
-      const userDoc = await getDoc(userDocRef);
+      await setDoc(userDocRef, {
+        uid: user.uid,
+        name: name,
+        email: user.email,
+      });
 
-      if (userDoc.exists()) {
-        setAlertMessage('User already exists');
-        setShowAlert(true);
-      } else {
-        // Store user data in Firestore
-        await setDoc(userDocRef, {
-          uid: user.uid,
-          email: user.email,
-        });
-        setAlertMessage('Welcome User');
-        setShowAlert(true);
-      }
+      setAlertMessage(`Congrats! Account created successfully. Welcome ${name}`);
+      setShowAlert(true);
     } catch (error: any) {
       if (error.code === 'auth/email-already-in-use') {
         setAlertMessage('User already exists');
@@ -48,9 +46,13 @@ const SignUp: React.FC = () => {
 
   const handleAlertDismiss = () => {
     setShowAlert(false);
-    if (alertMessage === 'Welcome User') {
+    if (alertMessage === `Congrats! Account created successfully. Welcome ${name}`) {
       history.push('/home');
     }
+  };
+
+  const handleLogin = () => {
+    history.push('/login');
   };
 
   return (
@@ -61,6 +63,18 @@ const SignUp: React.FC = () => {
         </IonToolbar>
       </IonHeader>
       <IonContent className="ion-padding">
+        <div className="welcome-container">
+          <img src={welcomeImage} alt="Welcome" className="welcome-image" />
+          <h1 className="welcome-text">Create Account</h1>
+        </div>
+        <IonItem>
+          <IonLabel position="stacked">Name</IonLabel>
+          <IonInput
+            value={name}
+            type="text"
+            onIonChange={(e) => setName(e.detail.value!)}
+          />
+        </IonItem>
         <IonItem>
           <IonLabel position="stacked">Email</IonLabel>
           <IonInput
@@ -78,7 +92,12 @@ const SignUp: React.FC = () => {
           />
         </IonItem>
         {error && <p style={{ color: 'red' }}>{error}</p>}
-        <IonButton expand="block" onClick={handleSignUp}>Sign Up</IonButton>
+        <div className="button-group">
+          <IonButton className="signup-button" onClick={handleSignUp}>Sign Up</IonButton>
+        </div>
+        <div className="signup-text">
+          Already have an account? <span onClick={handleLogin}>Login</span>
+        </div>
         <IonAlert
           isOpen={showAlert}
           onDidDismiss={handleAlertDismiss}
